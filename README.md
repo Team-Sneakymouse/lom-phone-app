@@ -15,7 +15,7 @@ Tests use the genuine manager interface with a fake network boundary: **not live
 
 ## Build
 
-Requirements: **JDK 25**, outbound HTTPS to Maven, Gradle distributions and GitHub raw source. No system Gradle, private artifact, manager implementation build or credentials are needed.
+Requirements: **JDK 25**, outbound HTTPS to Maven repositories (including `https://maven.sneakyrp.com/releases/`) and Gradle distributions. No system Gradle, private artifact, manager implementation build or credentials are needed.
 
 ```sh
 export JAVA_HOME=/path/to/jdk-25
@@ -35,16 +35,16 @@ Pins:
 - Gradle wrapper **9.7.0**, distribution SHA-256 verified.
 - `xyz.jpenilla.run-paper` **3.1.0**, which requires Gradle 9.7.0 (9.3.1 cannot resolve its plugin variant).
 - PlaceholderAPI compile/test seam **2.11.6**, optional at runtime.
-- [SneakyPocketbase Java API commit `0b5c895f3cab2eb87db3565c435a5c945c03e92a`](https://github.com/Team-Sneakymouse/SneakyPocketbase/tree/0b5c895f3cab2eb87db3565c435a5c945c03e92a).
+- SneakyPocketbase API **`io.github.team-sneakymouse:sneakypocketbase-api:2026.10.09-0233c4a041d5`**, from `https://maven.sneakyrp.com/releases/`.
 
-`fetchManagerApi` downloads the five **genuine upstream Java API sources**, checks individually pinned SHA-256 hashes and compiles a separate compile-only source set. Those classes are **excluded from the plugin JAR**. This avoids upstream's unrelated local MagicSpells JAR and Windows `javap.exe` requirements without modifying upstream. Generated sources are under `build/generated/managerApi/`; clean builds need network again. Deploy a manager providing this exact compatible seam; the `-api.jar` alone is not a runtime plugin.
+The published manager API is a **compile-only** dependency and is also available on the test classpath. Its classes are **excluded from the plugin JAR**. No custom source download or manager implementation build is needed. Deploy the matching SneakyPocketbase runtime plugin; the API JAR alone is not a runtime plugin.
 
 Paper supplies Gson **2.14.0**. No manager, Kotlin, PAPI or Gson classes are bundled. `build` verifies that boundary and the pinned runServer configuration. CI runs the same clean build/dry-run; it does not start Minecraft or contact PocketBase.
 
 ## Operator setup (not performed here)
 
 1. Use Paper 26.2 build 132 on Java 25 in an isolated test environment.
-2. Install the genuine **runtime** SneakyPocketbase plugin from the pinned compatible revision. Configure its credentials privately per its README; this bridge contains no credentials or authentication implementation.
+2. Install the matching **runtime** SneakyPocketbase plugin for API version `2026.10.09-0233c4a041d5`. Configure its credentials privately per its README; this bridge contains no credentials or authentication implementation.
 3. Ask the backend owner to review/provision [private schema contracts](docs/pocketbase-schema.md) in a disposable backend. **The bridge does not create collections or run migrations.** Missing collections fail generically or return `unknown`, never raw server errors.
 4. Install `lom-phone-bridge-0.1.0.jar` in `plugins/`. Install PlaceholderAPI if placeholders are wanted. Paper metadata requires SneakyPocketbase to load BEFORE and joins its classpath; PAPI is optional and joined when present.
 5. Start once to generate `plugins/LoMPhoneBridge/config.yml`, stop, adjust if necessary, then restart. No reload command is provided.
