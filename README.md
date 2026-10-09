@@ -1,45 +1,104 @@
 # LoM Phone App
 
-A location-free phone companion for **Lords of Minecraft**, with a Paper-to-PocketBase bridge.
+A location-free companion for **Lords of Minecraft**, with a Paper-to-PocketBase bridge.
 
 ## Status
 
-Early development. This repository captures the community design and starts the Minecraft integration. **There is no released mobile app yet.**
+The initial **Paper bridge is implemented and builds/tests locally**. There is **no released mobile app**, redemption hook, integration worker, reward logic or deployment. No external collections have been created/modified.
 
-The first bridge milestone is:
+- `/lomphone link`: private secrecy warning, then clickable confirmation. Its random nonce is bound to the player/current warning, expires after 60 seconds, and cannot be replayed. Console and denied players cannot issue codes.
+- Confirmation creates a **256-bit random** short-lived code via SneakyPocketbase. Only SHA-256 digest, UUID and timestamps go into the **proposed new** `phone_link_codes` collection. The raw code is privately shown only after persistence succeeds; this plugin never logs it.
+- `%lomphone_steps%`: cache-only, nonblocking accepted totals from `phone_player_steps`. **`unknown` is not zero**: missing, malformed, duplicate, loading, stale and unavailable values return `unknown`; a valid numeric zero returns `0`.
+- Bounded UUID-filtered online-player polling, main-thread result application, generation/session guards and shutdown cleanup. No global scans, subscriptions, own auth/client, mobile redemption or rewards.
 
-1. Warn players to keep their linking code private.
-2. Generate and save a short-lived code only after clickable confirmation.
-3. Read accepted step totals from PocketBase and expose them through PlaceholderAPI.
-4. Use the existing SneakyPocketbase utility for authentication and asynchronous access.
+Tests use the genuine manager interface with a fake network boundary: **not live PocketBase or in-game verification**. See [verification checklist](docs/bridge-verification.md).
 
-Build/setup instructions and collection contracts will live with the Paper plugin once implemented. No live backend migrations, merging or production deployment are implied by this repository.
+## Build
 
-## Direction
+Requirements: **JDK 25**, outbound HTTPS to Maven, Gradle distributions and GitHub raw source. No system Gradle, private artifact, manager implementation build or credentials are needed.
 
-- **Mobile (proposed):** React Native + TypeScript + Expo development builds.
-- **Backend:** the community's existing TypeScript/JavaScript PocketBase hooks.
-- **Minecraft:** Paper **26.2**, using [SneakyPocketbase](https://github.com/Team-Sneakymouse/SneakyPocketbase).
-- **Coordination (proposed):** a private integration worker for durable cross-service workflows.
+```sh
+export JAVA_HOME=/path/to/jdk-25
+export PATH="$JAVA_HOME/bin:$PATH"
+./gradlew clean build
+./gradlew validateRunServer
+./gradlew runServer --dry-run
+```
 
-No GPS is required for step-based progress. Non-walking participation should be available without disclosing a disability. Platform health APIs and store/privacy policies still need real-device and publishing review.
+Windows: set `JAVA_HOME` and use `gradlew.bat`.
 
-## Security principles
+Artifact: `build/libs/lom-phone-bridge-0.1.0.jar`.
+Test report: `build/reports/tests/test/index.html`.
 
-The phone is an untrusted client. It receives limited player/device credentials, never embedded superuser credentials or a shared privileged private key. Backend routes enforce ownership, caps, active links and idempotency. The client reports activity; the backend calculates accepted progress and rewards.
+Pins:
+- Paper API/server **26.2 build 132** (`26.2.build.132-stable`).
+- Gradle wrapper **9.7.0**, distribution SHA-256 verified.
+- `xyz.jpenilla.run-paper` **3.1.0**, which requires Gradle 9.7.0 (9.3.1 cannot resolve its plugin variant).
+- PlaceholderAPI compile/test seam **2.11.6**, optional at runtime.
+- [SneakyPocketbase Java API commit `0b5c895f3cab2eb87db3565c435a5c945c03e92a`](https://github.com/Team-Sneakymouse/SneakyPocketbase/tree/0b5c895f3cab2eb87db3565c435a5c945c03e92a).
 
-Minecraft gameplay remains owned by the existing game systems. Network access must never block the Minecraft main thread or placeholder rendering.
+`fetchManagerApi` downloads the five **genuine upstream Java API sources**, checks individually pinned SHA-256 hashes and compiles a separate compile-only source set. Those classes are **excluded from the plugin JAR**. This avoids upstream's unrelated local MagicSpells JAR and Windows `javap.exe` requirements without modifying upstream. Generated sources are under `build/generated/managerApi/`; clean builds need network again. Deploy a manager providing this exact compatible seam; the `-api.jar` alone is not a runtime plugin.
+
+Paper supplies Gson **2.14.0**. No manager, Kotlin, PAPI or Gson classes are bundled. `build` verifies that boundary and the pinned runServer configuration. CI runs the same clean build/dry-run; it does not start Minecraft or contact PocketBase.
+
+## Operator setup (not performed here)
+
+1. Use Paper 26.2 build 132 on Java 25 in an isolated test environment.
+2. Install the genuine **runtime** SneakyPocketbase plugin from the pinned compatible revision. Configure its credentials privately per its README; this bridge contains no credentials or authentication implementation.
+3. Ask the backend owner to review/provision [private schema contracts](docs/pocketbase-schema.md) in a disposable backend. **The bridge does not create collections or run migrations.** Missing collections fail generically or return `unknown`, never raw server errors.
+4. Install `lom-phone-bridge-0.1.0.jar` in `plugins/`. Install PlaceholderAPI if placeholders are wanted. Paper metadata requires SneakyPocketbase to load BEFORE and joins its classpath; PAPI is optional and joined when present.
+5. Start once to generate `plugins/LoMPhoneBridge/config.yml`, stop, adjust if necessary, then restart. No reload command is provided.
+6. As a player with `lomphone.link` (default true), use `/lomphone link`, then click `[Confirm]`. Keep the code secret. With PAPI, use `/papi parse me %lomphone_steps%` after the first player-specific fetch applies.
+
+| Configuration | Default | Allowed |
+|---|---|---|
+| `collections.link-codes` | `phone_link_codes` | Letter then up to 63 letters/digits/underscores |
+| `collections.player-steps` | `phone_player_steps` | Same identifier constraint |
+| `code-ttl-seconds` | 300 | 30–900 |
+| `refresh-seconds` | 30 | 5–300 |
+| `stale-seconds` | 90 | At least refresh; at most 900 |
+| `max-concurrent-requests` | 8 | 1–64; separate read/write limits |
+
+Invalid configuration disables the bridge with a generic message. At most one write per player is in flight. No write is automatically retried: **a failed write may already have committed**. A later explicit confirmation creates a new code, not a replay of the uncertain operation.
+
+### Local runServer
+
+`runServer` is a real run-paper task pinned to Paper 26.2 build 132 and Java 25, and includes this plugin JAR. For operator-run disposable checks:
+
+- Put the genuine manager runtime and optional PAPI JARs in `run/plugins/`; configure the manager for a disposable backend only.
+- Review and accept Mojang's EULA yourself in `run/eula.txt` if you agree.
+- Run `./gradlew runServer`, then stop normally. `run/` is ignored; never point it at production.
+
+**Implementation verification ran only `validateRunServer` and `runServer --dry-run`; no Minecraft server was started.** Actual classloading, click rendering, backend rules and outages still require the checklist.
+
+## Recovery and data semantics
+
+Polling directly reads atomic lifecycle snapshots and global API availability. HTTP polling does not require realtime/collection subscription readiness. No async lifecycle/record events require revision reconciliation; `whenReady` is not used as a recurring recovery signal. Request generation/identity are checked again at main-thread application. A changed generation bypasses the refresh delay, while outstanding old requests remain counted until they finish. Manager timeout/failure semantics govern network work; the bridge never waits for it.
+
+A rotating one-second online-player sweep admits bounded requests. Each UUID has a refresh delay including after failed/missing/invalid reads. Cached totals conservatively use request-start time, become logically invalid immediately on API unavailability/generation change, and turn `unknown` at the stale bound. Logout clears warning/cache/session state, preventing late results from applying to a later session. Disable drops queued results and unregisters PAPI.
+
+Steps must be one numeric nonnegative integer per canonical UUID, at most `9007199254740991` (JSON/JavaScript safe integer). Fractions, stringified numbers, negatives, out-of-range values, duplicates and mismatched UUIDs fail closed. Synthetic/accessibility progress must not masquerade as walking steps; support it separately without disability disclosure.
+
+## Direction and security
+
+- Mobile proposed: React Native + TypeScript + Expo development builds.
+- Backend: existing TypeScript/JavaScript PocketBase hooks; future redemption must enforce expiry, atomic single-use, authenticated ownership and rate limits.
+- Coordination proposed: a private integration worker.
+
+No GPS is required for steps. Health APIs/privacy/publishing still need real-device review. The phone is untrusted: never give it superuser credentials or a shared privileged key. Existing Minecraft systems own gameplay and rewards.
 
 ## Notes and design
 
-- [Current architecture and decisions](docs/architecture.md)
-- [Original brainstorming and delivery plan](docs/notes/initial-architecture-plan.md) — historical; later decisions supersede its Go-hook recommendation.
+- [Architecture](docs/architecture.md)
+- [Collection contracts](docs/pocketbase-schema.md)
+- [Verification checklist](docs/bridge-verification.md)
+- [Original delivery plan](docs/notes/initial-architecture-plan.md) — historical and untouched; later decisions supersede its Go-hook recommendation.
 
-Future ideas include eggs, saved scrys, a job board, optional notifications, Dynmap, defense timers and market monitoring. These are not all part of the initial bridge. Real-world stops/gyms are a separate GPS/privacy/accessibility decision.
+Eggs, saved scrys, jobs, notifications, Dynmap, defense timers and markets remain future ideas. Real-world stops/gyms are a separate GPS/privacy/accessibility decision.
 
 ## Contributing
 
-Use scoped feature branches and pull requests. Add regression tests before changing behavior, run the relevant build/tests and distinguish automated verification from actual in-game checks. Do not commit credentials, private linking codes or player activity data. Do not migrate or deploy to production without explicit approval.
+Use scoped branches/PRs. Add regression tests before behavior changes; run build/tests and distinguish automated from in-game verification. Never commit credentials, private codes or player activity. No production migrations/deployment without approval.
 
 ## License
 

@@ -1,0 +1,20 @@
+name: LoMPhoneBridge
+version: '0.1.0'
+main: tv.rawb.lomphone.LoMPhonePlugin
+api-version: '26.2'
+description: Private phone linking codes and cache-only accepted step totals.
+authors: [Team-Sneakymouse]
+dependencies:
+  server:
+    SneakyPocketbase:
+      load: BEFORE
+      required: true
+      join-classpath: true
+    PlaceholderAPI:
+      load: BEFORE
+      required: false
+      join-classpath: true
+permissions:
+  lomphone.link:
+    description: Create a private phone linking code.
+    default: true

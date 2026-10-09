@@ -1,0 +1,9 @@
+collections:
+  link-codes: phone_link_codes
+  player-steps: phone_player_steps
+# Confirmation warning lasts 60 seconds; these durations are in seconds.
+code-ttl-seconds: 300
+refresh-seconds: 30
+stale-seconds: 90
+# Separate limits for reads and writes. Manager request timeout is 30 seconds/page.
+max-concurrent-requests: 8
