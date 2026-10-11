@@ -14,7 +14,7 @@ The implementation's local clean build executed **30 JUnit tests, zero failures/
 
 Coverage:
 - Warning before issuance, sender permission/player checks, player-bound nonce, current-warning replacement, 60-second expiry, replay and logout invalidation.
-- No raw code before successful persistence; SHA-256 exactly matches the displayed 256-bit secret; creation/expiry timestamps match the configured TTL.
+- No raw code before successful persistence; SHA-256 exactly matches the displayed 10-character Crockford secret; creation/expiry timestamps match the configured TTL.
 - In-flight write suppression, global read/write limits, sanitized synchronous/asynchronous failures, no automatic write retry, generation/readiness loss, delayed expiry and disable suppression.
 - UUID-filtered reads, numeric zero, malformed/stringified/noninteger/negative/unsafe values, duplicate/mismatched records, stale cache, recovery generation, older completion ordering, and logout/rejoin ordering.
 - Cache-only PAPI rendering, optional expansion contract, Paper descriptor, genuine main class, and configuration bounds.

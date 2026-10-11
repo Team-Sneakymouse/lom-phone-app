@@ -28,7 +28,7 @@ CREATE INDEX idx_phone_link_codes_uuid_expiry ON phone_link_codes (minecraft_uui
 CREATE INDEX idx_phone_link_codes_expiry ON phone_link_codes (expires_at);
 ```
 
-The bridge writes UUID, digest and timestamps only. **Never add a raw-code field.** The code is 32 cryptographically random bytes, encoded as 43-character unpadded base64url. Hash exactly the displayed string's UTF-8 bytes with SHA-256: no trimming, padding or case changes. This is a 256-bit secret, not a human password.
+The bridge writes UUID, digest and timestamps only. **Never add a raw-code field.** The code is **10 characters of Crockford base32** (`0123456789ABCDEFGHJKMNPQRSTVWXYZ`, no `I`/`L`/`O`/`U`), drawn from 50 bits of CSPRNG entropy. Hash exactly the displayed string's UTF-8 bytes with SHA-256: no trimming, hyphens, padding or case changes. Future redemption may normalize typed input (case / Crockford substitutions) to this canonical uppercase form before hashing; the bridge always issues the canonical form.
 
 UUID is intentionally **not unique** here: multiple codes can exist, including an uncertain write that committed. Invalidating older codes is an explicit future backend policy, not implemented here.
 

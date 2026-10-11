@@ -4,10 +4,10 @@ A location-free companion for **Lords of Minecraft**, with a Paper-to-PocketBase
 
 ## Status
 
-The initial **Paper bridge is implemented and builds/tests locally**. There is **no released mobile app**, redemption hook, integration worker, reward logic or deployment. No external collections have been created/modified.
+The initial **Paper bridge is implemented** (Kotlin, EmptyPlugin-shaped) and builds/tests locally. There is **no released mobile app**, redemption hook, integration worker or reward logic. PocketBase collections `phone_link_codes` and `phone_player_steps` follow [docs/pocketbase-schema.md](docs/pocketbase-schema.md).
 
 - `/lomphone link`: private secrecy warning, then clickable confirmation. Its random nonce is bound to the player/current warning, expires after 60 seconds, and cannot be replayed. Console and denied players cannot issue codes.
-- Confirmation creates a **256-bit random** short-lived code via SneakyPocketbase. Only SHA-256 digest, UUID and timestamps go into the **proposed new** `phone_link_codes` collection. The raw code is privately shown only after persistence succeeds; this plugin never logs it.
+- Confirmation creates a short-lived **10-character Crockford** code (~50 bits) via SneakyPocketbase. Only SHA-256 digest, UUID and timestamps go into `phone_link_codes`. The raw code is privately shown only after persistence succeeds; this plugin never logs it.
 - `%lomphone_steps%`: cache-only, nonblocking accepted totals from `phone_player_steps`. **`unknown` is not zero**: missing, malformed, duplicate, loading, stale and unavailable values return `unknown`; a valid numeric zero returns `0`.
 - Bounded UUID-filtered online-player polling, main-thread result application, generation/session guards and shutdown cleanup. No global scans, subscriptions, own auth/client, mobile redemption or rewards.
 
@@ -20,33 +20,35 @@ Requirements: **JDK 25**, outbound HTTPS to Maven repositories (including `https
 ```sh
 export JAVA_HOME=/path/to/jdk-25
 export PATH="$JAVA_HOME/bin:$PATH"
-./gradlew clean build
-./gradlew validateRunServer
+./gradlew check
 ./gradlew runServer --dry-run
 ```
 
 Windows: set `JAVA_HOME` and use `gradlew.bat`.
 
-Artifact: `build/libs/lom-phone-bridge-0.1.0.jar`.
+Version: `yyyy.MM.dd-<12-char-git-hash>` (from `HEAD`). Artifact: `build/libs/lom-phone-bridge-<version>.jar`.
+Maven coordinates: `io.github.team-sneakymouse:lom-phone-bridge:<version>`.
 Test report: `build/reports/tests/test/index.html`.
+Agent policy: [AGENTS.md](AGENTS.md).
 
 Pins:
+- Kotlin **2.3.21**, Java **25** toolchain (stdlib shaded into the JAR).
 - Paper API/server **26.2 build 132** (`26.2.build.132-stable`).
 - Gradle wrapper **9.7.0**, distribution SHA-256 verified.
-- `xyz.jpenilla.run-paper` **3.1.0**, which requires Gradle 9.7.0 (9.3.1 cannot resolve its plugin variant).
+- `xyz.jpenilla.run-paper` **3.1.0**.
 - PlaceholderAPI compile/test seam **2.11.6**, optional at runtime.
 - SneakyPocketbase API **`io.github.team-sneakymouse:sneakypocketbase-api:2026.10.09-0233c4a041d5`**, from `https://maven.sneakyrp.com/releases/`.
 
-The published manager API is a **compile-only** dependency and is also available on the test classpath. Its classes are **excluded from the plugin JAR**. No custom source download or manager implementation build is needed. Deploy the matching SneakyPocketbase runtime plugin; the API JAR alone is not a runtime plugin.
+The published manager API is a **compile-only** dependency and is also available on the test classpath. Manager, PAPI and Gson classes are **excluded from the plugin JAR**; kotlin-stdlib is shaded. Deploy the matching SneakyPocketbase runtime plugin; the API JAR alone is not a runtime plugin.
 
-Paper supplies Gson **2.14.0**. No manager, Kotlin, PAPI or Gson classes are bundled. `build` verifies that boundary and the pinned runServer configuration. CI runs the same clean build/dry-run; it does not start Minecraft or contact PocketBase.
+`./gradlew check` runs tests, artifact boundary checks, `validateRunServer`, and `publishPreflight`. CI does not start Minecraft or contact PocketBase.
 
 ## Operator setup (not performed here)
 
 1. Use Paper 26.2 build 132 on Java 25 in an isolated test environment.
 2. Install the matching **runtime** SneakyPocketbase plugin for API version `2026.10.09-0233c4a041d5`. Configure its credentials privately per its README; this bridge contains no credentials or authentication implementation.
-3. Ask the backend owner to review/provision [private schema contracts](docs/pocketbase-schema.md) in a disposable backend. **The bridge does not create collections or run migrations.** Missing collections fail generically or return `unknown`, never raw server errors.
-4. Install `lom-phone-bridge-0.1.0.jar` in `plugins/`. Install PlaceholderAPI if placeholders are wanted. Paper metadata requires SneakyPocketbase to load BEFORE and joins its classpath; PAPI is optional and joined when present.
+3. Review [private schema contracts](docs/pocketbase-schema.md). **The bridge does not create collections or run migrations.** Missing collections fail generically or return `unknown`, never raw server errors.
+4. Install `lom-phone-bridge-<version>.jar` in `plugins/` (or rely on `./gradlew runServer`, which includes this JAR). Install PlaceholderAPI if placeholders are wanted. Paper metadata requires SneakyPocketbase to load BEFORE and joins its classpath; PAPI is optional and joined when present.
 5. Start once to generate `plugins/LoMPhoneBridge/config.yml`, stop, adjust if necessary, then restart. No reload command is provided.
 6. As a player with `lomphone.link` (default true), use `/lomphone link`, then click `[Confirm]`. Keep the code secret. With PAPI, use `/papi parse me %lomphone_steps%` after the first player-specific fetch applies.
 
@@ -65,9 +67,10 @@ Invalid configuration disables the bridge with a generic message. At most one wr
 
 `runServer` is a real run-paper task pinned to Paper 26.2 build 132 and Java 25, and includes this plugin JAR. For operator-run disposable checks:
 
-- Put the genuine manager runtime and optional PAPI JARs in `run/plugins/`; configure the manager for a disposable backend only.
-- Review and accept Mojang's EULA yourself in `run/eula.txt` if you agree.
-- Run `./gradlew runServer`, then stop normally. `run/` is ignored; never point it at production.
+- Default run directory is `~/.cache/lom-phone-bridge/run` (native filesystem). Paper 26.2 world COW breaks on NTFS/FUSE mounts such as `/mnt/files`. Override with `LOM_PHONE_RUN_DIR=/path`.
+- Put the genuine manager runtime and optional PAPI JARs in that run directory’s `plugins/`; configure the manager for a disposable backend only.
+- Review and accept Mojang's EULA yourself in `eula.txt` if you agree.
+- Run `./gradlew runServer`, then stop normally. Never point the run directory at production.
 
 **Implementation verification ran only `validateRunServer` and `runServer --dry-run`; no Minecraft server was started.** Actual classloading, click rendering, backend rules and outages still require the checklist.
 

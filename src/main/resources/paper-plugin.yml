@@ -1,9 +1,10 @@
 name: LoMPhoneBridge
-version: '0.1.0'
-main: tv.rawb.lomphone.LoMPhonePlugin
+version: '${version}'
+main: com.lomphone.LoMPhonePlugin
 api-version: '26.2'
 description: Private phone linking codes and cache-only accepted step totals.
-authors: [Team-Sneakymouse]
+authors: [Team Sneakymouse]
+website: https://github.com/Team-Sneakymouse/lom-phone-app
 dependencies:
   server:
     SneakyPocketbase:
