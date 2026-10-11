@@ -180,16 +180,63 @@ Step sync uses the **Android step counter** by default (optional Health Connect)
 
 ## Push (FCM)
 
-Android push tokens require Firebase Cloud Messaging:
+Android needs **three** pieces before Job Board alerts work end-to-end:
 
-1. Create a Firebase project → add Android app with package `tv.rawb.lomphone`.
-2. Download `google-services.json` into `apps/mobile/` (or `apps/mobile/google-services.json`).
-3. In `app.json` set `"android": { "googleServicesFile": "./google-services.json", ... }`.
-4. Set a real EAS `extra.eas.projectId` (or run `eas init`) for Expo push.
-5. For Expo’s push service delivery: upload an FCM V1 service-account key via `eas credentials` ([Expo FCM docs](https://docs.expo.dev/push-notifications/fcm-credentials/)).
-6. Rebuild the native app (`npx expo run:android`).
+| Piece | Where | Purpose |
+|---|---|---|
+| `google-services.json` | `apps/mobile/google-services.json` (gitignored) | Native FCM in the APK so `getExpoPushTokenAsync` works |
+| EAS `projectId` | `app.json` → `extra.eas.projectId` | Expo push token project binding |
+| FCM V1 service account | Expo credentials (`eas credentials`) | Expo’s servers can deliver to Android devices |
 
-Until that file is wired, the Settings toggle will explain that Firebase is missing instead of a raw SDK stack trace.
+### A. Firebase Android app + `google-services.json`
+
+1. [Firebase Console](https://console.firebase.google.com/) → create or pick a project (e.g. Lords of Minecraft).
+2. Add an **Android** app with package name **`tv.rawb.lomphone`** (same as `app.json`).
+3. Download **`google-services.json`** → save as `apps/mobile/google-services.json` (see `google-services.json.example` for shape only).
+4. Wire it in `app.json` under `android`:
+
+   ```json
+   "android": {
+     "package": "tv.rawb.lomphone",
+     "googleServicesFile": "./google-services.json",
+     ...
+   }
+   ```
+
+5. Rebuild the native app (`npx expo run:android` / arm64 on a phone). JS reload is not enough.
+
+Until step 4–5 are done, Settings → Job Board alerts shows a Firebase missing message instead of a raw SDK stack trace.
+
+### B. Expo project id
+
+Project is **`@team-sneakymouse/lom-phone`** (`extra.eas.projectId` in `app.json`). To recreate/link elsewhere:
+
+```bash
+cd apps/mobile
+npx eas-cli login          # account with access to team-sneakymouse
+npx eas-cli init --account team-sneakymouse --non-interactive
+```
+
+Dev clients can lag after `eas init`; `src/push/notifications.ts` also reads `projectId` from `app.json` as a fallback.
+
+### C. Upload FCM V1 to Expo (delivery)
+
+`google-services.json` alone is **not** enough for Expo to deliver. You also need a **Firebase Admin SDK service account** JSON (Project settings → **Service accounts** → **Generate new private key**). Never commit that file (`*-firebase-adminsdk-*.json` is gitignored).
+
+Upload it (either works):
+
+- **Dashboard:** [Credentials for lom-phone](https://expo.dev/accounts/team-sneakymouse/projects/lom-phone/credentials) → Android → `tv.rawb.lomphone` → **FCM V1 service account key** → upload.
+- **CLI:** `npx eas-cli credentials -p android` → production → Google Service Account → **Manage … Push Notifications (FCM V1)** → upload new key.
+
+Without this, Expo returns `InvalidCredentials` / “Unable to retrieve the FCM server key” even though the phone has a valid `ExponentPushToken`.
+
+PocketBase fans out via `https://exp.host/--/api/v2/push/send` on new open `lom2_listed_jobs` rows (`/lom/phone/push/*` on device register). No FCM key in the phone app or PocketBase.
+
+### Smoke test
+
+1. Physical phone, rebuilt APK with `google-services.json` + FCM V1 uploaded to Expo.
+2. Settings → enable **New job board posts** → confirmation hint (toggle alone does **not** send a push).
+3. Create an open `lom2_listed_jobs` row (or send a test via Expo Push API / [expo.dev/notifications](https://expo.dev/notifications)) → device receives a push → tap opens Job Board.
 
 ## iOS
 

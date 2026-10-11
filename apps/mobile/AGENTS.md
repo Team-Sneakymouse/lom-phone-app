@@ -22,7 +22,7 @@ Health Connect / HealthKit / Core Motion require a **dev client or EAS native bu
 - Steps UI: today (local health range), last sync (`lastSubmitAt`), manual sync, health status + permission CTA. Providers in `src/steps/health/` (`provider.android.ts` Health Connect, `provider.ios.ts` HealthKit + Core Motion, web unsupported).
 - Sync submits an incremental **epoch high-water** via `POST /lom/phone/steps` (`src/steps/sync.ts`), never “steps today” as the POST body. Server baselines per link epoch. Clear epoch state on link/unlink (`resetLocalStepHighWater`).
 - Never write `phone_player_steps` CRUD. Read-only health access only (no writes into Health Connect / HealthKit).
-- Job Board push: Settings toggle → `expo-notifications` token → `/lom/phone/push/register`. Native builds need `extra.eas.projectId` (EAS). Web has no push.
+- Job Board push: Settings toggle → `expo-notifications` token → `/lom/phone/push/register`. Needs `google-services.json` (gitignored), `extra.eas.projectId`, and FCM V1 service account on Expo credentials — see [README Push (FCM)](./README.md#push-fcm). Never commit `*-firebase-adminsdk-*.json`. Web has no push.
 - Mojang name lookup must fall back to local cache when offline; UUID comes from the server session.
 - Job Board reads `lom2_listed_jobs` (open rows: `endTime = 0`); may fetch `posterIconBase64`, not raw `location` coords.
 - Do not trust Expo API memory — check SDK 57 docs when unsure.

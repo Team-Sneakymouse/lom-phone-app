@@ -24,6 +24,7 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "package": "tv.rawb.lomphone",
+      "googleServicesFile": "./google-services.json",
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "POST_NOTIFICATIONS",
@@ -83,11 +84,13 @@
     ],
     "extra": {
       "eas": {
-        "projectId": ""
-      }
+        "projectId": "21ba1aba-8725-495a-853b-1581dd5aa43c"
+      },
+      "router": {}
     },
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "owner": "team-sneakymouse"
   }
 }
