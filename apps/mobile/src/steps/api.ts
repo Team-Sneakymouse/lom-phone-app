@@ -9,6 +9,7 @@ export type StepsState = {
   totalSteps: number;
   paidSteps: number;
   sessionSteps: number;
+  lastSubmitAt: string | null;
   baselineSet?: boolean;
   hasBaseline?: boolean;
 };
@@ -16,11 +17,16 @@ export type StepsState = {
 type StepsApiPayload = StepsState & { error?: string };
 
 function parseStepsState(data: StepsApiPayload): StepsState {
+  const last =
+    data.lastSubmitAt == null || data.lastSubmitAt === ''
+      ? null
+      : String(data.lastSubmitAt);
   return {
     minecraftUuid: String(data.minecraftUuid ?? ''),
     totalSteps: Number(data.totalSteps) || 0,
     paidSteps: Number(data.paidSteps) || 0,
     sessionSteps: Number(data.sessionSteps) || 0,
+    lastSubmitAt: last,
     baselineSet: Boolean(data.baselineSet),
     hasBaseline: data.hasBaseline === undefined ? undefined : Boolean(data.hasBaseline),
   };

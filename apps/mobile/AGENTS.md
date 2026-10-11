@@ -10,12 +10,16 @@ npx expo start
 npx tsc --noEmit
 ```
 
+Health Connect / HealthKit / Core Motion require a **dev client or EAS native build** — Expo Go will not load those modules.
+
 ## Rules
 
 - No PocketBase superuser credentials in the client.
 - Install identity: `src/device/credentials.ts` (`deviceId` + `deviceSecret` in SecureStore). Auth headers `X-LoM-Device-*`.
 - Redeem/session/unlink/steps: `/lom/phone/*` (Team-Sneakymouse/pocketbase hooks). Crockford codes in `src/util/crockford.ts`.
-- Steps: submit pedometer-style cumulative via `POST /lom/phone/steps`; server baselines per link epoch (first submit after redeem credits 0). Never write `phone_player_steps` CRUD. Clear `lom.steps.localHighWater.v1` on link/unlink.
+- Steps UI: today (local health range), last sync (`lastSubmitAt`), manual sync, health status + permission CTA. Providers in `src/steps/health/` (`provider.android.ts` Health Connect, `provider.ios.ts` HealthKit + Core Motion, web unsupported).
+- Sync submits an incremental **epoch high-water** via `POST /lom/phone/steps` (`src/steps/sync.ts`), never “steps today” as the POST body. Server baselines per link epoch. Clear epoch state on link/unlink (`resetLocalStepHighWater`).
+- Never write `phone_player_steps` CRUD. Read-only health access only (no writes into Health Connect / HealthKit).
 - Job Board push: Settings toggle → `expo-notifications` token → `/lom/phone/push/register`. Native builds need `extra.eas.projectId` (EAS). Web has no push.
 - Mojang name lookup must fall back to local cache when offline; UUID comes from the server session.
 - Job Board reads `lom2_listed_jobs` (open rows: `endTime = 0`); may fetch `posterIconBase64`, not raw `location` coords.

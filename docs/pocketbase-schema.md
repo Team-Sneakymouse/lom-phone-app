@@ -101,8 +101,8 @@ Phone clients **must not** write this collection via CRUD. They call `POST /lom/
 
 | Method | Path | Auth | Body / result |
 |---|---|---|---|
-| POST | `/lom/phone/steps` | device headers | `{ steps }` → `{ minecraftUuid, totalSteps, paidSteps, sessionSteps, baselineSet }` |
-| GET | `/lom/phone/steps` | device headers | totals + `{ sessionSteps, hasBaseline }` |
+| POST | `/lom/phone/steps` | device headers | `{ steps }` → `{ minecraftUuid, totalSteps, paidSteps, sessionSteps, baselineSet, lastSubmitAt }` |
+| GET | `/lom/phone/steps` | device headers | totals + `{ sessionSteps, hasBaseline, lastSubmitAt }` |
 
 ## `phone_step_reward_ledger` — mailed reward crossings
 

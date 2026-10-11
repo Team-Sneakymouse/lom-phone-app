@@ -9,7 +9,12 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "tv.rawb.lomphone"
+      "bundleIdentifier": "tv.rawb.lomphone",
+      "infoPlist": {
+        "NSMotionUsageDescription": "Lords of Minecraft reads your step count to sync walking progress for in-game rewards.",
+        "NSHealthShareUsageDescription": "Lords of Minecraft reads your step count to sync walking progress for in-game rewards.",
+        "NSHealthUpdateUsageDescription": "Lords of Minecraft does not write health data."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -45,6 +50,31 @@
           "icon": "./assets/images/icon.png",
           "color": "#C4A35A",
           "defaultChannel": "jobs"
+        }
+      ],
+      [
+        "expo-sensors",
+        {
+          "motionPermission": "Lords of Minecraft reads your step count to sync walking progress for in-game rewards."
+        }
+      ],
+      "react-native-health-connect",
+      [
+        "@kingstinct/react-native-healthkit",
+        {
+          "NSHealthShareUsageDescription": "Lords of Minecraft reads your step count to sync walking progress for in-game rewards.",
+          "NSHealthUpdateUsageDescription": "Lords of Minecraft does not write health data.",
+          "background": false
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26,
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36
+          }
         }
       ]
     ],

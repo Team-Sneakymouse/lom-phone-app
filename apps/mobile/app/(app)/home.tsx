@@ -9,7 +9,6 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 const MENUS = [
   { label: 'Job Board', href: '/(app)/job-board' as const },
   { label: 'Steps', href: '/(app)/steps' as const },
-  { label: 'Activity', href: '/(app)/activity' as const },
 ] as const;
 
 export default function HomeScreen() {
