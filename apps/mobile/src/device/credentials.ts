@@ -19,12 +19,37 @@ function bytesToHex(bytes: Uint8Array): string {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-function randomUuid(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID().toLowerCase();
+/**
+ * Random bytes without a native crypto module.
+ * Prefer Web Crypto when present; otherwise mix time + Math.random
+ * (good enough for install identity; upgrade to expo-crypto after a native rebuild).
+ */
+function getRandomBytes(size: number): Uint8Array {
+  const bytes = new Uint8Array(size);
+  const subtleCrypto = globalThis.crypto;
+  if (subtleCrypto && typeof subtleCrypto.getRandomValues === 'function') {
+    subtleCrypto.getRandomValues(bytes);
+    return bytes;
   }
-  const bytes = new Uint8Array(16);
-  crypto.getRandomValues(bytes);
+  let state =
+    (Date.now() >>> 0) ^
+    (Math.floor(
+      (typeof performance !== 'undefined' ? performance.now() : 0) * 1e3,
+    ) <<
+      1);
+  for (let i = 0; i < size; i++) {
+    // xorshift32 + Math.random mix
+    state ^= state << 13;
+    state ^= state >>> 17;
+    state ^= state << 5;
+    state = (state + Math.floor(Math.random() * 0x100000000)) >>> 0;
+    bytes[i] = (state >>> ((i % 4) * 8)) & 0xff;
+  }
+  return bytes;
+}
+
+function randomUuid(): string {
+  const bytes = getRandomBytes(16);
   bytes[6] = (bytes[6]! & 0x0f) | 0x40;
   bytes[8] = (bytes[8]! & 0x3f) | 0x80;
   const hex = bytesToHex(bytes);
@@ -32,9 +57,7 @@ function randomUuid(): string {
 }
 
 function randomSecret(): string {
-  const bytes = new Uint8Array(32);
-  crypto.getRandomValues(bytes);
-  return bytesToHex(bytes);
+  return bytesToHex(getRandomBytes(32));
 }
 
 function parseCreds(raw: string): DeviceCredentials | null {
