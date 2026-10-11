@@ -48,10 +48,23 @@ export async function obtainExpoPushToken(): Promise<string | null> {
     Constants.expoConfig?.extra?.eas?.projectId ||
     '';
 
-  const token = await Notifications.getExpoPushTokenAsync(
-    projectId ? { projectId } : undefined,
-  );
-  return token.data;
+  try {
+    const token = await Notifications.getExpoPushTokenAsync(
+      projectId ? { projectId } : undefined,
+    );
+    return token.data;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (
+      /firebase|googleServicesFile|FCM|GoogleService/i.test(msg) ||
+      (Platform.OS === 'android' && /initializeApp/i.test(msg))
+    ) {
+      throw new Error(
+        'Android push needs Firebase (google-services.json). See apps/mobile/README.md — Push (FCM).',
+      );
+    }
+    throw err instanceof Error ? err : new Error(msg);
+  }
 }
 
 export { PREF_KEY };

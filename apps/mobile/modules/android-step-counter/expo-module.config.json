@@ -1,0 +1,6 @@
+{
+  "platforms": ["android"],
+  "android": {
+    "modules": ["tv.rawb.lomphone.stepcounter.AndroidStepCounterModule"]
+  }
+}

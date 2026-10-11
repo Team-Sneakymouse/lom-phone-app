@@ -8,6 +8,7 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -64,47 +65,54 @@ export default function WelcomeScreen() {
       <SafeAreaView style={styles.safe}>
         <KeyboardAvoidingView
           style={styles.flex}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
         >
-          <View style={styles.hero}>
-            <Animated.View entering={FadeIn.duration(700)} style={[styles.logoWrap, logoStyle]}>
-              <Image
-                source={require('../assets/brand/logo.png')}
-                style={styles.logo}
-                accessibilityLabel="Lords of Minecraft"
-              />
-            </Animated.View>
-            <Animated.Text entering={FadeInDown.delay(180).duration(650)} style={styles.brand}>
-              Lords of Minecraft
-            </Animated.Text>
-            <Animated.Text entering={FadeInDown.delay(320).duration(650)} style={styles.tagline}>
-              In Minecraft, run{' '}
-              <Text style={styles.command}>/lomphone link</Text>
-              , then enter the private code below.
-            </Animated.Text>
-          </View>
+          <ScrollView
+            contentContainerStyle={styles.scroll}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.hero}>
+              <Animated.View entering={FadeIn.duration(700)} style={[styles.logoWrap, logoStyle]}>
+                <Image
+                  source={require('../assets/brand/logo.png')}
+                  style={styles.logo}
+                  accessibilityLabel="Lords of Minecraft"
+                />
+              </Animated.View>
+              <Animated.Text entering={FadeInDown.delay(180).duration(650)} style={styles.brand}>
+                Lords of Minecraft
+              </Animated.Text>
+              <Animated.Text entering={FadeInDown.delay(320).duration(650)} style={styles.tagline}>
+                In Minecraft, run{' '}
+                <Text style={styles.command}>/lomphone link</Text>
+                , then enter the private code below.
+              </Animated.Text>
+            </View>
 
-          <Animated.View entering={FadeInDown.delay(480).duration(650)} style={styles.form}>
-            <Text style={styles.label}>Link code</Text>
-            <TextInput
-              value={code}
-              onChangeText={(value) => {
-                setCode(value.toUpperCase());
-                setError(null);
-              }}
-              autoCapitalize="characters"
-              autoCorrect={false}
-              maxLength={14}
-              placeholder="XXXXXXXXXX"
-              placeholderTextColor="rgba(14,28,26,0.35)"
-              style={styles.input}
-              editable={!busy}
-              onSubmitEditing={onLink}
-              returnKeyType="go"
-            />
-            {error ? <Text style={styles.error}>{error}</Text> : null}
-            <PrimaryButton label="Link device" onPress={onLink} busy={busy} />
-          </Animated.View>
+            <Animated.View entering={FadeInDown.delay(480).duration(650)} style={styles.form}>
+              <Text style={styles.label}>Link code</Text>
+              <TextInput
+                value={code}
+                onChangeText={(value) => {
+                  setCode(value.toUpperCase());
+                  setError(null);
+                }}
+                autoCapitalize="characters"
+                autoCorrect={false}
+                maxLength={14}
+                placeholder="XXXXXXXXXX"
+                placeholderTextColor="rgba(14,28,26,0.35)"
+                style={styles.input}
+                editable={!busy}
+                onSubmitEditing={onLink}
+                returnKeyType="go"
+              />
+              {error ? <Text style={styles.error}>{error}</Text> : null}
+              <PrimaryButton label="Link device" onPress={onLink} busy={busy} />
+            </Animated.View>
+          </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </View>
@@ -114,7 +122,13 @@ export default function WelcomeScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: 'transparent' },
   safe: { flex: 1 },
-  flex: { flex: 1, justifyContent: 'space-between', paddingHorizontal: 28 },
+  flex: { flex: 1 },
+  scroll: {
+    flexGrow: 1,
+    justifyContent: 'space-between',
+    paddingHorizontal: 28,
+    paddingBottom: 28,
+  },
   hero: {
     flexGrow: 1,
     justifyContent: 'center',
@@ -146,8 +160,8 @@ const styles = StyleSheet.create({
     color: colors.brass,
   },
   form: {
-    paddingBottom: 28,
     gap: 10,
+    paddingTop: 16,
   },
   label: {
     fontFamily: fonts.bodySemi,
