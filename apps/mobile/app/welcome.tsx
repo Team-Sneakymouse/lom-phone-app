@@ -78,7 +78,9 @@ export default function WelcomeScreen() {
               Lords of Minecraft
             </Animated.Text>
             <Animated.Text entering={FadeInDown.delay(320).duration(650)} style={styles.tagline}>
-              Link your phone with a private in-game code.
+              In Minecraft, run{' '}
+              <Text style={styles.command}>/lomphone link</Text>
+              , then enter the private code below.
             </Animated.Text>
           </View>
 
@@ -122,10 +124,6 @@ const styles = StyleSheet.create({
   },
   logoWrap: {
     marginBottom: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.35,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
   },
   logo: { width: 148, height: 148, resizeMode: 'contain' },
   brand: {
@@ -140,8 +138,12 @@ const styles = StyleSheet.create({
     fontSize: 17,
     color: colors.mist,
     textAlign: 'center',
-    maxWidth: 300,
+    maxWidth: 320,
     lineHeight: 24,
+  },
+  command: {
+    fontFamily: fonts.bodySemi,
+    color: colors.brass,
   },
   form: {
     paddingBottom: 28,
