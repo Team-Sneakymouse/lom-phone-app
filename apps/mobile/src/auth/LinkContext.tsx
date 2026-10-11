@@ -2,6 +2,7 @@ import { getOrCreateDeviceCredentials } from '@/src/device/credentials';
 import { fetchServerSession, unlinkOnServer } from '@/src/link/api';
 import { redeemLinkCode } from '@/src/link/redeem';
 import { resolvePlayerName } from '@/src/mojang/profile';
+import { resetLocalStepHighWater } from '@/src/steps/localHighWater';
 import {
   clearSession,
   loadSession,
@@ -84,6 +85,8 @@ export function LinkProvider({ children }: { children: ReactNode }) {
 
   const linkWithCode = useCallback(async (code: string) => {
     const next = await redeemLinkCode(code);
+    // New link epoch on the server; drop any pre-link stub/pedometer cache.
+    await resetLocalStepHighWater();
     await saveSession(next);
     setSession(next);
     const name = await resolvePlayerName(next.minecraftUuid);
@@ -97,6 +100,7 @@ export function LinkProvider({ children }: { children: ReactNode }) {
     } catch {
       // Still clear local session; server revoke is best-effort.
     }
+    await resetLocalStepHighWater();
     await clearSession();
     setSession(null);
     setPlayerName(null);

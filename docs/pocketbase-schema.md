@@ -37,6 +37,8 @@ The Paper bridge writes UUID, digest and timestamps only. **Never store the raw 
 | `minecraft_uuid` | text | Required lowercase UUID from the consumed code |
 | `linked_at` | date | Required; link epoch start |
 | `revoked_at` | date | Empty while active; set on unlink / replaced by another device |
+| `steps_baseline` | number | Pedometer reading at first submit after this redeem; empty until set |
+| `steps_last_reported` | number | Last accepted pedometer reading in this link epoch |
 
 Indexes:
 
@@ -63,7 +65,7 @@ Mounted outside `/api/` (PocketBase reserves that prefix).
 | GET | `/lom/phone/session` | device headers | Active session payload or 401 |
 | POST | `/lom/phone/unlink` | device headers or body | Sets `revoked_at` |
 
-Redeem uses a DB transaction: mark `consumed_at`, then write the device link. Invalid/expired/consumed codes return a generic error. Re-linking the same device updates its UUID and secret digest; linking a UUID from a new device revokes prior active devices for that UUID (one active step-earning install per account).
+Redeem uses a DB transaction: mark `consumed_at`, then write the device link. Invalid/expired/consumed codes return a generic error. Re-linking the same device updates its UUID and secret digest; linking a UUID from a new device revokes prior active devices for that UUID (one active step-earning install per account). Redeem clears `steps_baseline` / `steps_last_reported` so the next steps submit starts a new epoch.
 
 ### Push fields (on `phone_device_links`)
 
@@ -93,14 +95,14 @@ Redeem uses a DB transaction: mark `consumed_at`, then write the device link. In
 CREATE UNIQUE INDEX idx_phone_player_steps_uuid ON phone_player_steps (minecraft_uuid);
 ```
 
-Phone clients **must not** write this collection via CRUD. They call `POST /lom/phone/steps` with device auth and a cumulative `steps` high-water. The hook never decreases `total_steps` and caps gain per submit. The Paper bridge reads `total_steps` for `%lomphone_steps%` (missing/ambiguous → `unknown`) and uses `paid_steps` + the ledger when mailing rewards.
+Phone clients **must not** write this collection via CRUD. They call `POST /lom/phone/steps` with device auth and a pedometer-style cumulative `steps` reading. Per **link epoch** on `phone_device_links`: the first submit after redeem sets `steps_baseline` (credits **0**, blocking pre-link dumps across many phones); later submits credit only `max(0, reported − steps_last_reported)`, capped per request. The account row’s `total_steps` never decreases. The Paper bridge reads `total_steps` for `%lomphone_steps%` (missing/ambiguous → `unknown`) and uses `paid_steps` + the ledger when mailing rewards.
 
 ### Step routes
 
 | Method | Path | Auth | Body / result |
 |---|---|---|---|
-| POST | `/lom/phone/steps` | device headers | `{ steps }` → `{ minecraftUuid, totalSteps, paidSteps }` |
-| GET | `/lom/phone/steps` | device headers | current accepted/paid totals |
+| POST | `/lom/phone/steps` | device headers | `{ steps }` → `{ minecraftUuid, totalSteps, paidSteps, sessionSteps, baselineSet }` |
+| GET | `/lom/phone/steps` | device headers | totals + `{ sessionSteps, hasBaseline }` |
 
 ## `phone_step_reward_ledger` — mailed reward crossings
 

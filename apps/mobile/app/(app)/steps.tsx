@@ -1,17 +1,17 @@
 import { Panel, ScreenShell } from '@/components/ScreenShell';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { fetchStepsState, submitStepSnapshot, type StepsState } from '@/src/steps/api';
+import { STEPS_LOCAL_HIGH_WATER_KEY } from '@/src/steps/localHighWater';
 import { colors, fonts, type } from '@/src/theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Text, TextInput, View } from 'react-native';
 
-const LOCAL_KEY = 'lom.steps.localHighWater.v1';
-
 /**
  * Steps screen: until Health Connect / Core Motion land, the field is a
- * high-water stub the player (or QA) can bump; server still reconciles.
+ * pedometer-style high-water stub. Server baselines on first submit after link
+ * and only credits deltas within that epoch.
  */
 export default function StepsScreen() {
   const [state, setState] = useState<StepsState | null>(null);
@@ -24,9 +24,8 @@ export default function StepsScreen() {
     try {
       const remote = await fetchStepsState();
       setState(remote);
-      const stored = await AsyncStorage.getItem(LOCAL_KEY);
-      const local = Math.max(Number(stored) || 0, remote.totalSteps);
-      setLocalSteps(String(local));
+      const stored = await AsyncStorage.getItem(STEPS_LOCAL_HIGH_WATER_KEY);
+      setLocalSteps(String(Math.max(0, Number(stored) || 0)));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load steps');
     }
@@ -43,7 +42,7 @@ export default function StepsScreen() {
     setError(null);
     try {
       const value = Math.max(0, Math.floor(Number(localSteps) || 0));
-      await AsyncStorage.setItem(LOCAL_KEY, String(value));
+      await AsyncStorage.setItem(STEPS_LOCAL_HIGH_WATER_KEY, String(value));
       const next = await submitStepSnapshot(value);
       setState(next);
     } catch (e) {
@@ -65,6 +64,12 @@ export default function StepsScreen() {
           <Text style={styles.em}>{state ? state.totalSteps.toLocaleString() : '—'}</Text>
         </Text>
         <Text style={type.bodyOnPanel}>
+          This link:{' '}
+          <Text style={styles.em}>
+            {state ? state.sessionSteps.toLocaleString() : '—'}
+          </Text>
+        </Text>
+        <Text style={type.bodyOnPanel}>
           Already rewarded through:{' '}
           <Text style={styles.em}>{state ? state.paidSteps.toLocaleString() : '—'}</Text>
         </Text>
@@ -72,7 +77,7 @@ export default function StepsScreen() {
 
       <Panel>
         <Text style={[type.bodyOnPanel, { marginBottom: 8 }]}>
-          Local high-water (stub until pedometer providers ship)
+          Local pedometer reading (stub; first sync after link sets baseline)
         </Text>
         <TextInput
           value={localSteps}
