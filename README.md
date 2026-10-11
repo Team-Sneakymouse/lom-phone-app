@@ -4,7 +4,7 @@ A location-free companion for **Lords of Minecraft**, with a Paper-to-PocketBase
 
 ## Status
 
-The initial **Paper bridge is implemented** (Kotlin, EmptyPlugin-shaped) and builds/tests locally. There is **no released mobile app**, redemption hook, integration worker or reward logic. PocketBase collections `phone_link_codes` and `phone_player_steps` follow [docs/pocketbase-schema.md](docs/pocketbase-schema.md).
+The **Paper bridge** is implemented (Kotlin, EmptyPlugin-shaped). The **Expo phone app** scaffold lives in [`apps/mobile`](apps/mobile) (welcome/link + home/settings; redeem still stubbed). There is no production redemption hook, integration worker or reward logic yet. PocketBase collections `phone_link_codes` and `phone_player_steps` follow [docs/pocketbase-schema.md](docs/pocketbase-schema.md).
 
 - `/lomphone link`: private secrecy warning, then clickable confirmation. Its random nonce is bound to the player/current warning, expires after 60 seconds, and cannot be replayed. Console and denied players cannot issue codes.
 - Confirmation creates a short-lived **10-character Crockford** code (~50 bits) via SneakyPocketbase. Only SHA-256 digest, UUID and timestamps go into `phone_link_codes`. The raw code is privately shown only after persistence succeeds; this plugin never logs it.

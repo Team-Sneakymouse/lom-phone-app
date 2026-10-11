@@ -46,11 +46,13 @@ Guidelines:
 | Plugin enable/disable | **MockBukkit** (`mockbukkit-v26.2`) with reflected `PocketbaseProvider.install` |
 | Full gameplay / live PB | Manual **`runServer`** smoke tests |
 
-## Future mobile boundary
+## Mobile app (`apps/mobile`)
 
-- Prefer `apps/mobile/` (Expo) when mobile work starts; keep privileged redemption in PocketBase hooks.
+- Expo Router + TypeScript. Commands: `cd apps/mobile && npm start` (see `apps/mobile/README.md`).
+- Keep privileged redemption in PocketBase hooks; the app uses a stub redeem until those exist.
 - Never ship superuser credentials or shared privileged keys to the phone.
 - Shared contracts belong in `docs/`, not duplicated ad hoc in client code.
+- Player display names: Mojang session API + AsyncStorage cache; link session in SecureStore.
 
 ## Definition of done
 

@@ -18,3 +18,11 @@
 .env
 .env.local
 .env.*.local
+
+# Node / Expo
+node_modules/
+.expo/
+dist/
+web-build/
+apps/mobile/.env
+apps/mobile/.env.local
