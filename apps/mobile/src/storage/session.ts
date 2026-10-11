@@ -9,10 +9,9 @@ const SESSION_KEY = 'lom.session.v1';
 const PLAYER_NAME_KEY = 'lom.playerName.v1';
 
 export type LinkSession = {
+  deviceId: string;
   minecraftUuid: string;
   linkedAt: string;
-  /** Future: limited device credential from PocketBase redeem. */
-  accessToken?: string;
 };
 
 export type PlayerNameCache = {
@@ -25,7 +24,13 @@ export async function loadSession(): Promise<LinkSession | null> {
   const raw = await getSecureItem(SESSION_KEY);
   if (!raw) return null;
   try {
-    return JSON.parse(raw) as LinkSession;
+    const parsed = JSON.parse(raw) as Partial<LinkSession>;
+    if (!parsed.minecraftUuid || !parsed.deviceId) return null;
+    return {
+      deviceId: String(parsed.deviceId).toLowerCase(),
+      minecraftUuid: String(parsed.minecraftUuid).toLowerCase(),
+      linkedAt: String(parsed.linkedAt ?? ''),
+    };
   } catch {
     return null;
   }

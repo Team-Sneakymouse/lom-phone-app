@@ -1,26 +1,24 @@
-# Proposed PocketBase contracts — operator review required
+# PocketBase contracts — LoM phone companion
 
-**Proposals, not executed migrations.** This plugin cannot provision collections. Review in a disposable backend before any production changes. Collection names below are configurable defaults.
+Collection names below are configurable defaults for the Paper bridge. **CRUD rules stay locked/null** unless noted. The phone never ships superuser credentials; privileged pairing uses custom routes in [Team-Sneakymouse/pocketbase](https://github.com/Team-Sneakymouse/pocketbase) hooks.
 
-## Private access (both collections)
+## Private access
 
-Set all five API rules (`listRule`, `viewRule`, `createRule`, `updateRule`, `deleteRule`) to **locked/null**, never empty string (open access). No mobile/anonymous client may inspect digests/UUIDs, issue codes, alter accepted totals or redeem through collection CRUD. The existing manager supplies privileged server-side access with privately configured credentials; there are no phone/plugin credentials here.
+For `phone_link_codes`, `phone_device_links`, and `phone_player_steps`, set all five API rules (`listRule`, `viewRule`, `createRule`, `updateRule`, `deleteRule`) to **locked/null**, never empty string (open access). Mobile clients must not list/create/update these collections directly.
 
-Future redemption requires a dedicated authenticated, rate-limited hook route, not open collection rules. Backend validation must enforce the contract independently.
-
-## `phone_link_codes` — new base collection
+## `phone_link_codes` — short-lived in-game codes
 
 Keep PocketBase system `id`. Custom fields:
 
 | Field | Type | Contract |
 |---|---|---|
-| `minecraft_uuid` | text | Required canonical lowercase UUID; regex `^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$` |
-| `code_digest` | text | Required exactly 64 lowercase SHA-256 hex characters; regex `^[0-9a-f]{64}$` |
+| `minecraft_uuid` | text | Required canonical lowercase UUID |
+| `code_digest` | text | Required 64 lowercase SHA-256 hex chars |
 | `created_at` | date | Required UTC bridge creation marker |
-| `expires_at` | date | Required, after creation; TTL 30–900 seconds |
-| `consumed_at` | date | Optional/empty initially; future atomic redemption only |
+| `expires_at` | date | Required; TTL 30–900 seconds |
+| `consumed_at` | date | Empty until redeemed; set atomically by redeem route |
 
-Index proposals (review identifiers for renamed collections):
+Indexes:
 
 ```sql
 CREATE UNIQUE INDEX idx_phone_link_codes_digest ON phone_link_codes (code_digest);
@@ -28,35 +26,56 @@ CREATE INDEX idx_phone_link_codes_uuid_expiry ON phone_link_codes (minecraft_uui
 CREATE INDEX idx_phone_link_codes_expiry ON phone_link_codes (expires_at);
 ```
 
-The bridge writes UUID, digest and timestamps only. **Never add a raw-code field.** The code is **10 characters of Crockford base32** (`0123456789ABCDEFGHJKMNPQRSTVWXYZ`, no `I`/`L`/`O`/`U`), drawn from 50 bits of CSPRNG entropy. Hash exactly the displayed string's UTF-8 bytes with SHA-256: no trimming, hyphens, padding or case changes. Future redemption may normalize typed input (case / Crockford substitutions) to this canonical uppercase form before hashing; the bridge always issues the canonical form.
+The Paper bridge writes UUID, digest and timestamps only. **Never store the raw code.** Codes are **10 characters of Crockford base32** (`0123456789ABCDEFGHJKMNPQRSTVWXYZ`). Hash the canonical uppercase UTF-8 bytes with SHA-256.
 
-UUID is intentionally **not unique** here: multiple codes can exist, including an uncertain write that committed. Invalidating older codes is an explicit future backend policy, not implemented here.
-
-### Future redemption (not implemented)
-
-1. Require authenticated phone/device ownership and rate-limit valid/invalid attempts. Use generic responses.
-2. Hash the submitted secret; privately find the unique digest. Reject missing/consumed/expired records using **backend time** and validate the stored canonical UUID.
-3. In **one transaction**, conditionally consume an unconsumed/unexpired code and create the ownership link. Concurrent requests must have exactly one winner; no check-then-update outside a transaction.
-4. Derive identity from the record, never a phone-supplied UUID. Phone clients cannot issue/extend/reset codes, clear consumption or write accepted totals.
-5. Enforce expiry even before cleanup runs. Implement audited retention/cleanup without raw-code logging. Define clock-skew policy with the backend owner.
-
-Issuance alone does **not** create a functional mobile link. Failed/timeout writes may already have committed; the bridge does not retry or disclose codes on failure.
-
-## `phone_player_steps` — proposed accepted aggregate
+## `phone_device_links` — install ↔ Minecraft ownership
 
 | Field | Type | Contract |
 |---|---|---|
-| `minecraft_uuid` | text | Required lowercase canonical UUID; regex above |
-| `total_steps` | number | `required=false`, `min=0`, `onlyInt=true`, `max=9007199254740991`; stored numeric zero is valid |
+| `device_id` | text | Required lowercase UUID; unique per install |
+| `secret_digest` | text | Required SHA-256 hex of the install secret |
+| `minecraft_uuid` | text | Required lowercase UUID from the consumed code |
+| `linked_at` | date | Required; link epoch start |
+| `revoked_at` | date | Empty while active; set on unlink / replaced by another device |
 
-PocketBase's [`NumberField`](https://github.com/pocketbase/pocketbase/blob/master/core/field_number.go) uses `required=true` to reject zero, not to require input presence, and defaults omitted numeric fields to zero (`NUMERIC DEFAULT 0 NOT NULL`). If omission must not become an accepted zero, enforce explicit input presence in the trusted writer/hook before PocketBase normalizes or stores the value; the stored numeric zero remains valid. The bridge cannot distinguish a defaulted zero from an explicitly supplied zero.
+Indexes:
+
+```sql
+CREATE UNIQUE INDEX idx_phone_device_links_device ON phone_device_links (device_id);
+CREATE INDEX idx_phone_device_links_uuid ON phone_device_links (minecraft_uuid);
+CREATE INDEX idx_phone_device_links_uuid_active ON phone_device_links (minecraft_uuid, revoked_at);
+```
+
+### Device credential model
+
+1. The app generates `deviceId` (UUID) + `deviceSecret` (32 random bytes as 64 hex chars) once and stores them in secure storage.
+2. Every privileged call sends `X-LoM-Device-Id` / `X-LoM-Device-Secret` (body fields accepted on POST).
+3. Hooks resolve `minecraft_uuid` from an **active** row (`revoked_at` empty) after checking `secret_digest`.
+4. The app may cache `minecraftUuid` locally for Mojang display-name lookup; servers must not trust a client-supplied UUID for authorization.
+
+### Custom routes (`/api/lom/phone/*`)
+
+| Method | Path | Body / auth | Result |
+|---|---|---|---|
+| POST | `/api/lom/phone/redeem` | `{ code, deviceId, deviceSecret }` | Consume unexpired code; upsert device link; revoke other active devices for that UUID; return `{ deviceId, minecraftUuid, linkedAt }` |
+| GET | `/api/lom/phone/session` | device headers | Active session payload or 401 |
+| POST | `/api/lom/phone/unlink` | device headers or body | Sets `revoked_at` |
+
+Redeem uses a DB transaction: mark `consumed_at`, then write the device link. Invalid/expired/consumed codes return a generic error. Re-linking the same device updates its UUID and secret digest; linking a UUID from a new device revokes prior active devices for that UUID (one active step-earning install per account).
+
+## `phone_player_steps` — accepted aggregate
+
+| Field | Type | Contract |
+|---|---|---|
+| `minecraft_uuid` | text | Required lowercase canonical UUID |
+| `total_steps` | number | `min=0`, `onlyInt=true`; stored zero is valid |
 
 ```sql
 CREATE UNIQUE INDEX idx_phone_player_steps_uuid ON phone_player_steps (minecraft_uuid);
 ```
 
-This is **backend-accepted walking activity**, not a phone's raw health counter or reward balance. Only trusted hooks/worker may update totals with separately reviewed ownership, caps and idempotency. Represent non-walking/accessibility progress separately; never infer/disclose disability.
+Only trusted hooks/workers may update totals. The Paper bridge treats missing/ambiguous rows as **unknown**, not zero.
 
-The bridge filters `minecraft_uuid = '<canonical UUID>'`, batch size 2, and requires exactly one matching row. Missing rows are **unknown**, not zero. Numeric zero is valid; duplicates, malformed/missing fields, stringified/noninteger/negative/out-of-safe-range values and mismatched UUIDs are unknown. Do not operate without the unique UUID index: list paging is not schema integrity.
+## Job board (read-only)
 
-Extra metadata can be added without affecting the bridge. Validate integrality and timestamp relationships in trusted backend schema/hooks, not just this parser.
+`lom2_listed_jobs` is owned by SneakyJobBoard. Open listings use `endTime = 0`. Public `listRule` / `viewRule` of `endTime = 0` allow the phone Job Board to read display fields (including `posterIconBase64`); create/update/delete stay locked.

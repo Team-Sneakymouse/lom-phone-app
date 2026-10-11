@@ -13,7 +13,8 @@ npx tsc --noEmit
 ## Rules
 
 - No PocketBase superuser credentials in the client.
-- Link codes are Crockford (see `src/util/crockford.ts`); hash/redeem stays server-side.
-- Mojang name lookup must fall back to local cache when offline.
-- Job Board reads `lom2_listed_jobs` (open rows: `endTime = 0`) via public list/view rules; may fetch `posterIconBase64` for avatars, but not raw `location` coords.
+- Install identity: `src/device/credentials.ts` (`deviceId` + `deviceSecret` in SecureStore). Auth headers `X-LoM-Device-*`.
+- Redeem/session/unlink: `POST/GET /api/lom/phone/*` (Team-Sneakymouse/pocketbase hooks). Crockford codes in `src/util/crockford.ts`.
+- Mojang name lookup must fall back to local cache when offline; UUID comes from the server session.
+- Job Board reads `lom2_listed_jobs` (open rows: `endTime = 0`); may fetch `posterIconBase64`, not raw `location` coords.
 - Do not trust Expo API memory — check SDK 57 docs when unsure.

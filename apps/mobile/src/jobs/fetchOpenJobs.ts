@@ -1,6 +1,6 @@
+import { pocketBaseUrl } from '@/src/api/pocketbase';
 import type { ListedJob } from './types';
 
-const DEFAULT_PB = 'https://db.danidipp.com';
 const COLLECTION = 'lom2_listed_jobs';
 
 const FIELDS = [
@@ -20,11 +20,6 @@ const FIELDS = [
 type PbListResponse = {
   items?: Array<Partial<ListedJob> & { id?: string }>;
 };
-
-function pocketBaseUrl(): string {
-  const raw = process.env.EXPO_PUBLIC_POCKETBASE_URL?.trim();
-  return (raw && raw.length > 0 ? raw : DEFAULT_PB).replace(/\/$/, '');
-}
 
 function asJob(raw: Partial<ListedJob> & { id?: string }): ListedJob | null {
   if (!raw.id || !raw.name || !raw.category) return null;

@@ -15,10 +15,10 @@ npm run ios          # macOS + simulator / device
 ## Flow
 
 1. **Welcome** — brand splash, link-code field (10-char Crockford from `/lomphone link`).
-2. **Home** — `Welcome, {name}` from Mojang (cached locally; refreshed on focus/startup).
-3. **Settings** (bottom of home) — unlink clears secure session + name cache.
+2. **Home** — `Welcome, {name}` from Mojang/PlayerDB (cached; refreshed on focus/startup). Menu includes Job Board.
+3. **Settings** — unlink revokes the server device link and clears the local session.
 
-Redeem is **stubbed** until PocketBase hooks exist: any valid Crockford code links `EXPO_PUBLIC_DEMO_UUID`.
+Each install keeps a `deviceId` + `deviceSecret` in SecureStore. Redeem calls `POST /api/lom/phone/redeem`; later calls authenticate with those credentials and the server resolves the Minecraft UUID.
 
 ## Panorama
 

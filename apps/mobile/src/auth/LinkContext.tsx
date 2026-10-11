@@ -1,3 +1,5 @@
+import { getOrCreateDeviceCredentials } from '@/src/device/credentials';
+import { fetchServerSession, unlinkOnServer } from '@/src/link/api';
 import { redeemLinkCode } from '@/src/link/redeem';
 import { resolvePlayerName } from '@/src/mojang/profile';
 import {
@@ -42,11 +44,35 @@ export function LinkProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const existing = await loadSession();
+      const local = await loadSession();
       if (cancelled) return;
-      setSession(existing);
-      if (existing) {
-        const name = await resolvePlayerName(existing.minecraftUuid);
+
+      if (!local) {
+        setSession(null);
+        setReady(true);
+        return;
+      }
+
+      // Prefer server truth when reachable; keep local cache if offline.
+      try {
+        const creds = await getOrCreateDeviceCredentials();
+        const remote = await fetchServerSession(creds);
+        if (cancelled) return;
+        if (!remote) {
+          await clearSession();
+          setSession(null);
+          setPlayerName(null);
+          setReady(true);
+          return;
+        }
+        await saveSession(remote);
+        setSession(remote);
+        const name = await resolvePlayerName(remote.minecraftUuid);
+        if (!cancelled) setPlayerName(name);
+      } catch {
+        if (cancelled) return;
+        setSession(local);
+        const name = await resolvePlayerName(local.minecraftUuid);
         if (!cancelled) setPlayerName(name);
       }
       if (!cancelled) setReady(true);
@@ -65,6 +91,12 @@ export function LinkProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const unlink = useCallback(async () => {
+    try {
+      const creds = await getOrCreateDeviceCredentials();
+      await unlinkOnServer(creds);
+    } catch {
+      // Still clear local session; server revoke is best-effort.
+    }
     await clearSession();
     setSession(null);
     setPlayerName(null);
