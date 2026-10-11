@@ -31,6 +31,7 @@ export default function AppLayout() {
       }}
     >
       <Stack.Screen name="home" />
+      <Stack.Screen name="job-board" />
       <Stack.Screen name="steps" />
       <Stack.Screen name="activity" />
       <Stack.Screen name="settings" />
