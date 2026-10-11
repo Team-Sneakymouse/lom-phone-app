@@ -105,6 +105,7 @@ Reload JS: shake device → **Reload**, or press `r` in the Metro terminal.
 | Unable to load script | Start Metro; `adb reverse tcp:8081 tcp:8081`; open via `10.0.2.2:8081` |
 | Cannot find native module `ExpoCrypto` (or similar) | Native binary outdated vs JS deps — rebuild with `expo run:android`, or avoid that native module in JS until rebuilt |
 | Adding Expo native modules | Always rebuild the dev client after `npx expo install <native-module>` |
+| Health link “unavailable” / won’t grant on emulator | Expected — **Health Connect step sync needs a physical Android phone** with a step source. Push notifications likewise need a real device. |
 
 Step sync uses **Android Health Connect** and **iOS HealthKit + Core Motion**. Rebuild the native app after changing those plugins in `app.json`.
 

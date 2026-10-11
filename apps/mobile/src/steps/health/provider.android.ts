@@ -1,4 +1,5 @@
 import type { HealthStepsProvider, HealthStatus } from '@/src/steps/health/types';
+import * as Device from 'expo-device';
 import {
   aggregateRecord,
   getGrantedPermissions,
@@ -12,28 +13,38 @@ import {
 const STEPS_READ = { accessType: 'read' as const, recordType: 'Steps' as const };
 
 async function ensureInitialized(): Promise<HealthStatus | null> {
-  const status = await getSdkStatus();
-  if (status === SdkAvailabilityStatus.SDK_UNAVAILABLE) return 'unavailable';
-  if (status === SdkAvailabilityStatus.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED) {
+  try {
+    const status = await getSdkStatus();
+    if (status === SdkAvailabilityStatus.SDK_UNAVAILABLE) return 'unavailable';
+    if (status === SdkAvailabilityStatus.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED) {
+      return 'unavailable';
+    }
+    const ok = await initialize();
+    if (!ok) return 'unavailable';
+    return null;
+  } catch {
     return 'unavailable';
   }
-  const ok = await initialize();
-  if (!ok) return 'unavailable';
-  return null;
 }
 
 async function hasStepsRead(): Promise<boolean> {
-  const granted = await getGrantedPermissions();
-  return granted.some(
-    (p) =>
-      'recordType' in p &&
-      p.recordType === 'Steps' &&
-      'accessType' in p &&
-      p.accessType === 'read',
-  );
+  try {
+    const granted = await getGrantedPermissions();
+    return granted.some(
+      (p) =>
+        'recordType' in p &&
+        p.recordType === 'Steps' &&
+        'accessType' in p &&
+        p.accessType === 'read',
+    );
+  } catch {
+    return false;
+  }
 }
 
 async function resolveStatus(): Promise<HealthStatus> {
+  // Emulators rarely grant usable Health Connect step access.
+  if (!Device.isDevice) return 'unavailable';
   const initFail = await ensureInitialized();
   if (initFail) return initFail;
   return (await hasStepsRead()) ? 'ready' : 'needs_permission';
@@ -43,17 +54,34 @@ const androidHealthProvider: HealthStepsProvider = {
   getStatus: resolveStatus,
 
   async requestAccess() {
-    const initFail = await ensureInitialized();
-    if (initFail) {
-      openHealthConnectSettings();
-      return initFail;
+    try {
+      const initFail = await ensureInitialized();
+      if (initFail) {
+        if (Device.isDevice) {
+          try {
+            openHealthConnectSettings();
+          } catch {
+            // ignore
+          }
+        }
+        return initFail;
+      }
+      if (await hasStepsRead()) return 'ready';
+
+      await requestPermission([STEPS_READ]);
+      if (await hasStepsRead()) return 'ready';
+
+      // Emulators often have Health Connect installed but no working permission UI
+      // / no step providers — treat as unavailable, not a hard user deny.
+      if (!Device.isDevice) return 'unavailable';
+      return 'denied';
+    } catch {
+      return Device.isDevice ? 'denied' : 'unavailable';
     }
-    if (await hasStepsRead()) return 'ready';
-    await requestPermission([STEPS_READ]);
-    return (await hasStepsRead()) ? 'ready' : 'denied';
   },
 
   async openSettings() {
+    if (!Device.isDevice) return;
     openHealthConnectSettings();
   },
 

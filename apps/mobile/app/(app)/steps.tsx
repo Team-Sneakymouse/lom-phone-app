@@ -18,9 +18,22 @@ function healthLabel(status: HealthStatus): string {
     case 'denied':
       return 'Permission denied';
     case 'unavailable':
-      return 'Not available on this device';
+      return 'Needs a physical phone';
     case 'unsupported':
       return 'Use the iOS or Android app';
+  }
+}
+
+function healthHint(status: HealthStatus): string | null {
+  switch (status) {
+    case 'unavailable':
+      return 'Health Connect step access needs a physical Android phone with a step source (phone pedometer or Fit). Emulators usually cannot grant this.';
+    case 'denied':
+      return 'Step access was refused. Open Health Connect settings and allow Lords of Minecraft to read Steps, then try again.';
+    case 'needs_permission':
+      return 'Allow step access so walking can sync for in-game rewards.';
+    default:
+      return null;
   }
 }
 
@@ -108,6 +121,12 @@ export default function StepsScreen() {
         } catch {
           setStepsToday(null);
         }
+      } else if (next === 'unavailable') {
+        setError(
+          'Health Connect cannot grant steps here. Use a physical Android phone.',
+        );
+      } else if (next === 'denied') {
+        setError('Step permission was denied in Health Connect.');
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not update permissions');
@@ -117,12 +136,15 @@ export default function StepsScreen() {
   }
 
   const canSync = healthStatus === 'ready' && Boolean(session?.linkedAt);
+  const hint = healthHint(healthStatus);
   const permissionLabel =
-    healthStatus === 'denied' || healthStatus === 'unavailable'
+    healthStatus === 'denied'
       ? 'Open health settings'
-      : healthStatus === 'needs_permission'
-        ? 'Connect health'
-        : 'Manage health access';
+      : healthStatus === 'unavailable'
+        ? 'Needs physical phone'
+        : healthStatus === 'needs_permission'
+          ? 'Connect health'
+          : 'Manage health access';
 
   return (
     <ScreenShell
@@ -161,6 +183,7 @@ export default function StepsScreen() {
             {healthLabel(healthStatus)}
           </Text>
         </Text>
+        {hint ? <Text style={styles.hint}>{hint}</Text> : null}
         {error ? <Text style={styles.error}>{error}</Text> : null}
         <View style={{ marginTop: 12, gap: 10 }}>
           <PrimaryButton
@@ -169,7 +192,7 @@ export default function StepsScreen() {
             busy={busy}
             disabled={!canSync || permBusy}
           />
-          {healthStatus !== 'unsupported' ? (
+          {healthStatus !== 'unsupported' && healthStatus !== 'unavailable' ? (
             <PrimaryButton
               label={permissionLabel}
               onPress={onPermissions}
@@ -193,6 +216,14 @@ const styles = {
   },
   warn: {
     color: colors.brassDeep,
+  },
+  hint: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.moss,
+    marginTop: 8,
+    opacity: 0.85,
   },
   error: {
     fontFamily: fonts.body,
