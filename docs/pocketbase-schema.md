@@ -65,6 +65,21 @@ Mounted outside `/api/` (PocketBase reserves that prefix).
 
 Redeem uses a DB transaction: mark `consumed_at`, then write the device link. Invalid/expired/consumed codes return a generic error. Re-linking the same device updates its UUID and secret digest; linking a UUID from a new device revokes prior active devices for that UUID (one active step-earning install per account).
 
+### Push fields (on `phone_device_links`)
+
+| Field | Type | Notes |
+|---|---|---|
+| `push_token` | text | Expo push token (`ExponentPushToken[...]`) |
+| `notify_jobs` | bool | Opt-in Job Board alerts (default false) |
+| `push_updated_at` | date | Last preference/token write |
+
+| Method | Path | Purpose |
+|---|---|---|
+| POST | `/lom/phone/push/register` | `{ notifyJobs, pushToken? }` on active device |
+| POST | `/lom/phone/push/unregister` | Clear token + `notify_jobs` |
+
+`onRecordCreateRequest` for `lom2_listed_jobs` (open rows) fans out Expo pushes to active devices with `notify_jobs=true` and a token. Unlink clears push fields. See [docs/notes/push-notifications-plan.md](notes/push-notifications-plan.md).
+
 ## `phone_player_steps` — accepted aggregate
 
 | Field | Type | Contract |

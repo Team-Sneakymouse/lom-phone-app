@@ -110,10 +110,16 @@ Unregister on **unlink** (already revoke link) and when toggle turns off (clear 
 - Category-specific job filters
 - Guaranteed delivery / high-volume fanout (paginate; OK for LoM-scale listings)
 
+## Implementation status
+
+Implemented: schema fields, `/lom/phone/push/*` hooks, `lom2_listed_jobs` fan-out, Settings toggle, tap → Job Board, unlink clears push.
+
+Still required for real-device delivery: set `expo.extra.eas.projectId` via `eas init`, then an EAS/dev client build (not web).
+
 ## Acceptance
 
-- [ ] Toggle off by default; no OS prompt until user enables
-- [ ] Enable → permission → token stored → new job create delivers one notification
-- [ ] Disable or unlink → no further job pushes to that install
-- [ ] Notification tap lands on Job Board
-- [ ] Invalid tokens cleaned up so logs stay quiet
+- [x] Toggle off by default; no OS prompt until user enables
+- [ ] Enable → permission → token stored → new job create delivers one notification (needs native build + EAS project id)
+- [x] Disable or unlink → no further job pushes to that install (server clears prefs)
+- [x] Notification tap lands on Job Board
+- [x] Invalid tokens cleaned up on `DeviceNotRegistered`

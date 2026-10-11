@@ -1,3 +1,4 @@
+import { NotificationRouter } from '@/components/NotificationRouter';
 import { PanoramaBackground } from '@/components/PanoramaBackground';
 import { LinkProvider } from '@/src/auth/LinkContext';
 import { colors } from '@/src/theme';
@@ -51,6 +52,7 @@ export default function RootLayout() {
 
   return (
     <LinkProvider>
+      <NotificationRouter />
       <ThemeProvider value={navTheme}>
         <View style={{ flex: 1, backgroundColor: colors.ink }}>
           <PanoramaBackground />
