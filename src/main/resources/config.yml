@@ -1,9 +1,28 @@
 collections:
   link-codes: phone_link_codes
   player-steps: phone_player_steps
+  step-reward-ledger: phone_step_reward_ledger
 # Confirmation warning lasts 60 seconds; these durations are in seconds.
 code-ttl-seconds: 300
 refresh-seconds: 30
 stale-seconds: 90
 # Separate limits for reads and writes. Manager request timeout is 30 seconds/page.
 max-concurrent-requests: 8
+
+# Pedometer → SneakyMail (lom2_mail) payouts. Tiers are independent "every N accepted steps".
+rewards:
+  enabled: true
+  check-seconds: 60
+  ledger-retention-days: 7
+  mail-collection: lom2_mail
+  mail-sender-name: "<gold>Mother Mouse</gold>"
+  max-due-per-player: 20
+  tiers:
+    - every: 1000
+      key: walk_1k
+      note: "<white>Thanks for walking! Here's a reward for <green>1,000</green> steps.</white>"
+      command: "ms cast as {player} mail-phoneWalk1k"
+    - every: 5000
+      key: walk_5k
+      note: "<white>Big stretch — <green>5,000</green> steps earned you something special.</white>"
+      command: "ms cast as {player} mail-phoneWalk5k"

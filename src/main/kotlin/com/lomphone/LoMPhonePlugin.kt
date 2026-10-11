@@ -4,6 +4,8 @@ import com.danidipp.sneakypocketbase.PocketbaseProvider
 import com.lomphone.command.PhoneCommand
 import com.lomphone.expansion.StepsExpansion
 import com.lomphone.service.Bridge
+import com.lomphone.service.RewardPayout
+import com.lomphone.service.RewardTier
 import io.papermc.paper.command.brigadier.BasicCommand
 import io.papermc.paper.command.brigadier.CommandSourceStack
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents
@@ -30,6 +32,7 @@ open class LoMPhonePlugin : JavaPlugin(), Listener {
 
     private var unregisterExpansion: () -> Unit = {}
     private var bridge: Bridge? = null
+    private var rewards: RewardPayout? = null
     private var command: PhoneCommand? = null
     @Volatile private var accepting = false
     private var cursor = 0
@@ -132,6 +135,66 @@ open class LoMPhonePlugin : JavaPlugin(), Listener {
             1L,
             20L,
         )
+
+        if (config.getBoolean("rewards.enabled", false)) {
+            val tiers = loadRewardTiers(config.getMapList("rewards.tiers"))
+            if (tiers.isEmpty()) {
+                logger.warning("rewards.enabled but no valid tiers; payout disabled.")
+            } else {
+                val payout =
+                    RewardPayout(
+                        PocketbaseProvider.getApi(),
+                        { System.currentTimeMillis() },
+                        logger,
+                        config.getString("collections.player-steps", "phone_player_steps")!!,
+                        config.getString(
+                            "collections.step-reward-ledger",
+                            "phone_step_reward_ledger",
+                        )!!,
+                        config.getString("rewards.mail-collection", "lom2_mail")!!,
+                        config.getString("rewards.mail-sender-name", "<gold>Mother Mouse</gold>")!!,
+                        tiers,
+                        config.getLong("rewards.ledger-retention-days", 7) * 86_400_000L,
+                        config.getInt("rewards.max-due-per-player", 20),
+                    )
+                rewards = payout
+                val periodTicks =
+                    (config.getLong("rewards.check-seconds", 60).coerceIn(15, 600) * 20L)
+                Bukkit.getScheduler().runTaskTimerAsynchronously(
+                    this,
+                    Runnable {
+                        val online = Bukkit.getOnlinePlayers().map { it.uniqueId }
+                        if (online.isNotEmpty()) payout.runPass(online)
+                    },
+                    100L,
+                    periodTicks,
+                )
+                logger.info("Step reward payout enabled (${tiers.size} tier(s)).")
+            }
+        }
+    }
+
+    private fun loadRewardTiers(rows: List<Map<*, *>>): List<RewardTier> {
+        val out = ArrayList<RewardTier>()
+        for ((index, row) in rows.withIndex()) {
+            val every = (row["every"] as? Number)?.toLong() ?: 0L
+            val tierKey = row["key"]?.toString()?.trim().orEmpty()
+            val note = row["note"]?.toString()?.trim().orEmpty()
+            val command = row["command"]?.toString()?.trim().orEmpty()
+            if (every <= 0 || tierKey.isEmpty() || command.isEmpty()) {
+                logger.warning("Skipping invalid reward tier at index $index")
+                continue
+            }
+            out.add(
+                RewardTier(
+                    every = every,
+                    key = tierKey,
+                    note = note.ifEmpty { "Phone walking reward" },
+                    command = command,
+                ),
+            )
+        }
+        return out
     }
 
     private fun onMain(work: Runnable) {
@@ -167,6 +230,7 @@ open class LoMPhonePlugin : JavaPlugin(), Listener {
     override fun onDisable() {
         accepting = false
         bridge?.stop()
+        rewards?.stop()
         unregisterExpansion()
         Bukkit.getScheduler().cancelTasks(this)
     }

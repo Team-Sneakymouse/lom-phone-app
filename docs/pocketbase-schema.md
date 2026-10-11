@@ -70,13 +70,34 @@ Redeem uses a DB transaction: mark `consumed_at`, then write the device link. In
 | Field | Type | Contract |
 |---|---|---|
 | `minecraft_uuid` | text | Required lowercase canonical UUID |
-| `total_steps` | number | `min=0`, `onlyInt=true`; stored zero is valid |
+| `total_steps` | number | Accepted lifetime high-water (`min=0`, int) |
+| `paid_steps` | number | Steps already scanned for mail rewards |
+| `last_submit_at` | date | Last successful phone snapshot |
 
 ```sql
 CREATE UNIQUE INDEX idx_phone_player_steps_uuid ON phone_player_steps (minecraft_uuid);
 ```
 
-Only trusted hooks/workers may update totals. The Paper bridge treats missing/ambiguous rows as **unknown**, not zero.
+Phone clients **must not** write this collection via CRUD. They call `POST /lom/phone/steps` with device auth and a cumulative `steps` high-water. The hook never decreases `total_steps` and caps gain per submit. The Paper bridge reads `total_steps` for `%lomphone_steps%` (missing/ambiguous → `unknown`) and uses `paid_steps` + the ledger when mailing rewards.
+
+### Step routes
+
+| Method | Path | Auth | Body / result |
+|---|---|---|---|
+| POST | `/lom/phone/steps` | device headers | `{ steps }` → `{ minecraftUuid, totalSteps, paidSteps }` |
+| GET | `/lom/phone/steps` | device headers | current accepted/paid totals |
+
+## `phone_step_reward_ledger` — mailed reward crossings
+
+| Field | Type | Contract |
+|---|---|---|
+| `minecraft_uuid` | text | Recipient |
+| `reward_key` | text | e.g. `walk_1k:3` (tier key + crossing index) |
+| `threshold_steps` | number | Steps at that crossing |
+| `mail_source_key` | text | Matches `lom2_mail.source_key` (`lomphone:<uuid>:<reward_key>`) |
+| `mailed_at` | date | When queued |
+
+Unique on `(minecraft_uuid, reward_key)` and on `mail_source_key`. Bridge GCs rows older than configured retention (~7 days); idempotency remains via `lom2_mail.source_key` and advancing `paid_steps`.
 
 ## Job board (read-only)
 
