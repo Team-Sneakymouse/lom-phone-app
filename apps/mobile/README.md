@@ -18,7 +18,7 @@ npm run ios          # macOS + simulator / device
 2. **Home** — `Welcome, {name}` from Mojang/PlayerDB (cached; refreshed on focus/startup). Menu includes Job Board.
 3. **Settings** — unlink revokes the server device link and clears the local session.
 
-Each install keeps a `deviceId` + `deviceSecret` in SecureStore. Redeem calls `POST /api/lom/phone/redeem`; later calls authenticate with those credentials and the server resolves the Minecraft UUID.
+Each install keeps a `deviceId` + `deviceSecret` in SecureStore. Redeem calls `POST /lom/phone/redeem`; later calls authenticate with those credentials and the server resolves the Minecraft UUID.
 
 ## Panorama
 

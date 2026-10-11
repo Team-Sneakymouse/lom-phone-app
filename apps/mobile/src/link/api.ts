@@ -27,7 +27,7 @@ export async function redeemOnServer(
   creds: DeviceCredentials,
   signal?: AbortSignal,
 ): Promise<LinkSession> {
-  const res = await fetch(`${pocketBaseUrl()}/api/lom/phone/redeem`, {
+  const res = await fetch(`${pocketBaseUrl()}/lom/phone/redeem`, {
     method: 'POST',
     signal,
     headers: {
@@ -51,7 +51,7 @@ export async function fetchServerSession(
   creds: DeviceCredentials,
   signal?: AbortSignal,
 ): Promise<LinkSession | null> {
-  const res = await fetch(`${pocketBaseUrl()}/api/lom/phone/session`, {
+  const res = await fetch(`${pocketBaseUrl()}/lom/phone/session`, {
     method: 'GET',
     signal,
     headers: deviceAuthHeaders(creds),
@@ -68,7 +68,7 @@ export async function unlinkOnServer(
   creds: DeviceCredentials,
   signal?: AbortSignal,
 ): Promise<void> {
-  const res = await fetch(`${pocketBaseUrl()}/api/lom/phone/unlink`, {
+  const res = await fetch(`${pocketBaseUrl()}/lom/phone/unlink`, {
     method: 'POST',
     signal,
     headers: {

@@ -49,7 +49,7 @@ Guidelines:
 ## Mobile app (`apps/mobile`)
 
 - Expo Router + TypeScript. Commands: `cd apps/mobile && npm start` (see `apps/mobile/README.md`).
-- Device link: `phone_device_links` + hooks in Team-Sneakymouse/pocketbase (`/api/lom/phone/*`). App auth is device id/secret; UUID is resolved server-side.
+- Device link: `phone_device_links` + hooks in Team-Sneakymouse/pocketbase (`/lom/phone/*`). App auth is device id/secret; UUID is resolved server-side.
 - Never ship superuser credentials or shared privileged keys to the phone.
 - Shared contracts belong in `docs/`, not duplicated ad hoc in client code.
 - Player display names: Mojang/PlayerDB + AsyncStorage cache; link session in SecureStore.

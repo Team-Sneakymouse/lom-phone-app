@@ -53,13 +53,15 @@ CREATE INDEX idx_phone_device_links_uuid_active ON phone_device_links (minecraft
 3. Hooks resolve `minecraft_uuid` from an **active** row (`revoked_at` empty) after checking `secret_digest`.
 4. The app may cache `minecraftUuid` locally for Mojang display-name lookup; servers must not trust a client-supplied UUID for authorization.
 
-### Custom routes (`/api/lom/phone/*`)
+### Custom routes (`/lom/phone/*`)
+
+Mounted outside `/api/` (PocketBase reserves that prefix).
 
 | Method | Path | Body / auth | Result |
 |---|---|---|---|
-| POST | `/api/lom/phone/redeem` | `{ code, deviceId, deviceSecret }` | Consume unexpired code; upsert device link; revoke other active devices for that UUID; return `{ deviceId, minecraftUuid, linkedAt }` |
-| GET | `/api/lom/phone/session` | device headers | Active session payload or 401 |
-| POST | `/api/lom/phone/unlink` | device headers or body | Sets `revoked_at` |
+| POST | `/lom/phone/redeem` | `{ code, deviceId, deviceSecret }` | Consume unexpired code; upsert device link; revoke other active devices for that UUID; return `{ deviceId, minecraftUuid, linkedAt }` |
+| GET | `/lom/phone/session` | device headers | Active session payload or 401 |
+| POST | `/lom/phone/unlink` | device headers or body | Sets `revoked_at` |
 
 Redeem uses a DB transaction: mark `consumed_at`, then write the device link. Invalid/expired/consumed codes return a generic error. Re-linking the same device updates its UUID and secret digest; linking a UUID from a new device revokes prior active devices for that UUID (one active step-earning install per account).
 
