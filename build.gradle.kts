@@ -169,6 +169,7 @@ publishing {
                     "Paper-to-PocketBase bridge for Lords of Minecraft phone linking and step totals.",
                 )
                 url.set("https://github.com/Team-Sneakymouse/lom-phone-app")
+                properties.put("sneakyrp.deployment.type", "paper-plugin")
                 licenses {
                     license {
                         name.set("GNU General Public License v3.0")
